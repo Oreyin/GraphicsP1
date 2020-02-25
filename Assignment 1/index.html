@@ -1,0 +1,268 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+	</head>
+	<body style="background-color: #404040;">
+		<!--	
+			Scot White and Jaxon Stout P1
+		-->
+		<script src="./gl-matrix-min.js"></script>
+		<script src="./quadClass.js"></script>
+		<div style="position: relative;">
+			<canvas id="txcanvas" width="1280" height="800" style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
+			<canvas id="glcanvas" width="1280" height="800" style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
+		</div>
+		<!-- The GLSL version string must be the first characters in a shader. This accounts for the odd looking first line -->
+		<script id="vertex_shader" type="x-shader/x-vertex">#version 300 es
+			uniform mat4 u_m; // is applied accross everything
+			uniform mat4 u_v;
+			uniform mat4 u_pj;
+			in vec3 a_vertex_coordinates; //attribute 0
+			in vec3 a_colors;  //in is used for attributes
+			out vec4 colors;   // out 
+
+			void main(void)
+			{ 
+				gl_Position = u_pj * u_v * u_m * vec4(a_vertex_coordinates, 1.0);
+				colors = vec4(a_colors, 1.0);
+			}
+		</script>
+		<script id="fragment_shader" type="x-shader/x-fragment">#version 300 es
+			precision mediump float;
+			in vec4 colors;
+			out vec4 frag_color;
+			void main(void)
+			{
+				frag_color = colors;
+			}
+		</script>
+		<script>
+			/*	Enabling strict javascript means fewer silent errors.
+			*/
+			
+			'use strict';
+
+			function Radians(angle_in_degrees) {
+				return angle_in_degrees * (Math.PI / 180);
+			}
+
+			function Degrees(angle_in_radians) {
+				return angle_in_radians / Math.PI  * 180;
+			}
+
+			function CreateShader(vrtx_id, frag_id) {
+				if (!vrtx_id)
+					throw "Parameter 1 to CreateShader may be missing.";
+
+				if (!frag_id)
+					throw "Parameter 2 to CreateShader may be missing.";
+
+				let success;
+
+				let vrtx = document.getElementById(vrtx_id);
+				if (!vrtx)
+					throw "Could not find script element " + vrtx_id;
+				vrtx = vrtx.text;
+
+				let frag = document.getElementById(frag_id);
+				if (!frag)
+					throw "Could not find script element " + frag_id;
+				frag = frag.text;
+
+				let vertShader = gl.createShader(gl.VERTEX_SHADER);
+				gl.shaderSource(vertShader, vrtx);
+				gl.compileShader(vertShader);
+				success = gl.getShaderParameter(vertShader, gl.COMPILE_STATUS);
+				if (!success)
+					throw "Could not compile vertex shader:" + gl.getShaderInfoLog(vertShader);
+
+				let fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+				gl.shaderSource(fragShader, frag);
+				gl.compileShader(fragShader);
+				success = gl.getShaderParameter(fragShader, gl.COMPILE_STATUS);
+				if (!success)
+					throw "Could not compile fragment shader:" + gl.getShaderInfoLog(fragShader);
+
+				let shaderProgram = gl.createProgram();
+				gl.attachShader(shaderProgram, vertShader); 
+				gl.attachShader(shaderProgram, fragShader);
+				gl.linkProgram(shaderProgram);
+				success = gl.getProgramParameter(shaderProgram, gl.LINK_STATUS);
+				if (!success)
+					throw ("Shader program filed to link:" + gl.getProgramInfoLog (shaderProgram));
+					
+				return shaderProgram;
+			}
+
+			function InitializeShader()  //used to initialize this shader not all shader
+			{
+				color_shader.program = CreateShader("vertex_shader", "fragment_shader");
+				console.log('Program: ' + color_shader.program);
+				gl.useProgram(color_shader.program);    //get to use a single program at a time 
+
+				//returns a small integer
+				color_shader.a_vertex_coordinates = gl.getAttribLocation(color_shader.program, "a_vertex_coordinates");  //matched with line 19 of the same name 
+				
+				color_shader.a_colors = gl.getAttribLocation(color_shader.program, "a_colors");  // #1 in shader.a.coords
+				color_shader.u_m = gl.getUniformLocation(color_shader.program, "u_m");
+				color_shader.u_v = gl.getUniformLocation(color_shader.program, "u_v");
+				color_shader.u_pj = gl.getUniformLocation(color_shader.program, "u_pj");
+				gl.useProgram(null); //unbinding the program
+				console.log('Vertex Coordinate handle: ' + color_shader.a_vertex_coordinates); //1
+				console.log('Color attribute handle: ' + color_shader.a_colors);   //0
+				console.log('M Matrix handle: ' + color_shader.u_m);
+				console.log('V Matrix handle: ' + color_shader.u_v);
+				console.log('P Matrix handle: ' + color_shader.u_pj);
+			}//now a linked .exe
+
+			function ProjectText(P, mvp, ctx, text) {
+				let p = vec4.clone(P);
+				vec4.transformMat4(p, p, mvp);
+				p[0] /= p[3];
+				p[1] /= p[3];
+				let c = vec2.fromValues((p[0] * 0.5 + 0.5) * gl.canvas.width, (p[1] * -0.5 + 0.5) * gl.canvas.height);
+				ctx.fillText(text, c[0], c[1]);
+			}
+
+			function DrawScene(now) {
+				/*	Convert milliseconds to seconds.
+				*/
+
+				now /= 3000;
+				
+				/*	Initialize gl drawing area.
+				*/
+
+				gl.clearColor(0.1, 0.1, 0.1, 1.0);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+				gl.viewport(0, 0, glcanvas.clientWidth, glcanvas.clientHeight);
+				gl.enable(gl.DEPTH_TEST);
+				let P = mat4.create();
+				let V = mat4.create();
+
+				gl.useProgram(color_shader.program);
+				mat4.perspective(P, Radians(35.0), glcanvas.clientWidth / glcanvas.clientHeight, near_plane, far_plane);
+				mat4.lookAt(V, vec3.fromValues(5, 5, 10), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
+
+				let M = mat4.create();
+				let x = 2 * Math.cos(now / 2);
+				let y = 2 * Math.sin(now / 2)
+				//mat4.translate(M, M, vec3.fromValues(x*1.2, y*1.2, 0));	
+				// TODO: fix rotation to be 15 rpm	
+				mat4.rotate(M, M, Radians(now * 6*15), y_axis);
+
+				gl.uniformMatrix4fv(color_shader.u_m, false, M);
+				gl.uniformMatrix4fv(color_shader.u_v, false, V);
+				gl.uniformMatrix4fv(color_shader.u_pj, false, P);
+				if (wireframe)
+				{
+					gl.bindVertexArray(quad.axvao);
+					gl.drawElements(gl.LINES, quad.numAxes, gl.UNSIGNED_SHORT, 0);
+				}
+				
+				if (shapeToggle)
+				{
+					//console.log(quad);
+					gl.bindVertexArray(quad.vao);
+					gl.drawElements(gl.TRIANGLES, quad.numToDraw, gl.UNSIGNED_SHORT, 0);
+				}
+
+				gl.bindVertexArray(null);
+			
+
+				gl.useProgram(null);
+				requestAnimationFrame(DrawScene);
+			}
+
+			var vec3 = glMatrix.vec3;
+			var mat4 = glMatrix.mat4;
+			var vec4 = glMatrix.vec4;
+			var vec2 = glMatrix.vec2;
+
+			var x_axis = vec3.fromValues(1, 0, 0);
+			var y_axis = vec3.fromValues(0, 1, 0);
+			var z_axis = vec3.fromValues(0, 0, 1);
+			var near_plane = 1;
+			var far_plane = 20;
+
+			var glcanvas = document.getElementById('glcanvas');
+			var txcanvas = document.getElementById("txcanvas");
+			var gl = glcanvas.getContext('webgl2');
+			var ct = txcanvas.getContext("2d");
+			var color_shader = {};
+			var quad = {};
+			var axes = {};
+
+			var lineNumToDraw = 0;
+			var wireframe = false;
+			var shapeToggle = true;
+			var shape = 0;
+			var stacks = 1;
+
+			ct.textAlign = "left";
+			ct.textBaseline = "bottom";
+			ct.clearRect(0, 0, ct.canvas.width, ct.canvas.height);
+			ct.font = "28px Helvetica";
+			ct.fillStyle = "#C0C0C0";
+			ct.fillText("W to toggle wireframe - D to toggle triangles - M to cycle shapes - S to add stacks", 20, 50);
+
+			document.addEventListener('keydown', function(event) {
+				if(event.key == 'w') {
+					console.log(quad);
+					wireframe = !wireframe;
+				}
+			});
+
+			document.addEventListener('keydown', function(event) {
+				if(event.key == 'd') {
+					console.log(quad);
+					shapeToggle = !shapeToggle;
+				}
+			});
+
+			document.addEventListener('keydown', function(event) {
+				if(event.key == 's') {
+					//console.log(quad);
+					stacks++;
+				}
+			});
+
+			document.addEventListener('keydown', function(event) {
+				if(event.key == 'm') {
+					//console.log(quad);
+					shape = (shape + 1) % 4
+
+					switch (shape)
+					{
+						//full disk
+						case 0:
+						quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,0), .05, .75, 360);
+						break;
+
+						//partial disk
+						case 1:
+						quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,0), .3, .75, 360);
+						break;
+
+						//cylinder
+						case 2:
+						quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,1), .75, .75, 360);
+						break;
+
+						//partial cone
+						case 3:
+						quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,1), .75, .25, 230);
+						break;
+
+					}
+
+				}
+			});
+
+			InitializeShader();
+			quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,0), .05, .75, 360);
+			//InitializeAxes();
+			requestAnimationFrame(DrawScene)
+		</script>
+	</body>
+</html>
