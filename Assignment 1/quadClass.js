@@ -99,7 +99,7 @@ class Disk
         //Create all line segments
         for (let k = 0; k < stacks; k++)
         {
-            for (let i = 0; i < (this.vrts.length / 3) / 2; i++)
+            for (let i = 0; i < (this.vrts.length / 3) / stacks; i++)
             {
                 if (i >= ((this.vrts.length / 3) / 2) * (theta / 360))
                 {
