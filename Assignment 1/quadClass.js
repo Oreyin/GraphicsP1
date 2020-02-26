@@ -56,25 +56,25 @@ class Disk
         }
         //mat4.translate(m,m, -outerCenter);
 
-        let slc = (this.vrts.length / 3) / 2;
+        let slc = slices;
 
         for (let k = 0; k < stacks; k++)
         {
             //Creates all triangles
-            for (let i = 0; i < (this.vrts.length / 3) / 2; i++)
+            for (let i = 0; i < slices; i++)
             {
 
-                if (i >= ((this.vrts.length / 3) / 2) * (theta / 360))
+                if (i >= (slices * (theta / 360)))
                 {
                     break;
                 }
 
-                if (i == ((this.vrts.length / 3) / 2) -1)
+                if (i == (slices -1))
                 {
                     let temp = 0;
-                    let temp2 = i + ((this.vrts.length / 3) / 2);
-                    let temp3 = ((this.vrts.length / 3) / 2 );
-                    this.indices.push((k * slc) + i, (k * slc) + temp, (k * slc) + temp2);
+                    let temp2 = i + slices;
+                    let temp3 = slices;
+                    this.indices.push((k * slices) + i, (k * slices) + temp, (k * slices) + temp2);
                     this.numToDraw += 3;
 
                     this.indices.push((k * slc) + temp, (k * slc) + temp2, (k * slc) + temp3);
@@ -99,18 +99,18 @@ class Disk
         //Create all line segments
         for (let k = 0; k < stacks; k++)
         {
-            for (let i = 0; i < (this.vrts.length / 3) / stacks; i++)
+            for (let i = 0; i < slices; i++)
             {
-                if (i >= ((this.vrts.length / 3) / 2) * (theta / 360))
+                if (i >= (slices * (theta / 360)))
                 {
                     break;
                 }
 
-                if (i == ((this.vrts.length / 3) / 2) -1)
+                if (i == slices -1)
                 {
-                    let temp = 0;
-                    let temp2 = i + ((this.vrts.length / 3) / 2);
-                    let temp3 = ((this.vrts.length / 3) / 2 );
+                    let temp = i-(slices-1);
+                    let temp2 = i + slices;
+                    let temp3 = i+1;
                     this.axindices.push((k * slc) + i, (k * slc) + temp);
                     this.axindices.push((k * slc) + temp, (k * slc) + temp2);
                     this.axindices.push((k * slc) + temp2, (k * slc) + i);
@@ -118,12 +118,13 @@ class Disk
                     this.numAxes += 6;
 
                     this.axindices.push((k * slc) + temp3, (k * slc) + temp2);
+                    //this.axindices.push((k * slc) + temp, (k * slc) + temp3);
                     this.numAxes += 2;
                 }
                 else
                 {
                     let temp = i+1;
-                    let temp2 = i + ((this.vrts.length / 3) / 2);
+                    let temp2 = i + slices;
                     let temp3 = temp2+1;
                     this.axindices.push((k * slc) + i, (k * slc) + temp);
                     this.axindices.push((k * slc) + temp, (k * slc) + temp2);
