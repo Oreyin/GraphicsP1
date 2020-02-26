@@ -25,22 +25,27 @@ class Disk
         //Create all the vertices
         this.vrts = [ ];
         let p = vec3.create();
-        let m = mat4.create();
+
+        let distPerStack = (outerRadius - innerRadius) / stacks;
 
         //inner ring
         this.colors =  [ ];
         this.indices = [ ];
-        mat4.translate(m,m, innerCenter);
-        for (let i = 0; i < this.numVrts; i++) {
-            mat4.rotate(m, m, Radians(this.numDeg), z_axis);
-            vec3.transformMat4(p, vec3.fromValues(innerRadius, 0, 0), m);
-            this.vrts.push(p[0], p[1], p[2]);
-            for (let j = 0; j < 3; j++)
-                this.colors.push(Math.random());
+        for (let n = 0; n < stacks; n++)
+        {
+            let m = mat4.create();
+            mat4.translate(m,m, innerCenter);
+            for (let i = 0; i < this.numVrts; i++) {
+                mat4.rotate(m, m, Radians(this.numDeg), z_axis);
+                vec3.transformMat4(p, vec3.fromValues(innerRadius + (n * distPerStack), 0, 0), m);
+                this.vrts.push(p[0], p[1], p[2]);
+                for (let j = 0; j < 3; j++)
+                    this.colors.push(Math.random());
+            }
         }
 
         //outer ring
-        m = mat4.create();
+        let m = mat4.create();
         mat4.translate(m,m, outerCenter);
         for (let i = 0; i < this.numVrts; i++) {
             mat4.rotate(m, m, Radians(this.numDeg), z_axis);
@@ -51,42 +56,46 @@ class Disk
         }
         //mat4.translate(m,m, -outerCenter);
 
-        //Creates all triangles
-        for (let i = 0; i < (this.vrts.length / 3) / 2; i++)
+        let slc = (this.vrts.length / 3) / 2;
+
+        for (let k = 0; k < stacks; k++)
         {
-
-            if (i >= ((this.vrts.length / 3) / 2) * (theta / 360))
+            //Creates all triangles
+            for (let i = 0; i < (this.vrts.length / 3) / 2; i++)
             {
-                break;
+
+                if (i >= ((this.vrts.length / 3) / 2) * (theta / 360))
+                {
+                    break;
+                }
+
+                if (i == ((this.vrts.length / 3) / 2) -1)
+                {
+                    let temp = 0;
+                    let temp2 = i + ((this.vrts.length / 3) / 2);
+                    let temp3 = ((this.vrts.length / 3) / 2 );
+                    this.indices.push((k * slc) + i, (k * slc) + temp, (k * slc) + temp2);
+                    this.numToDraw += 3;
+
+                    this.indices.push((k * slc) + temp, (k * slc) + temp2, (k * slc) + temp3);
+                    this.numToDraw += 3;
+                }
+                else
+                {
+                    let temp = i+1;
+                    let temp2 = i + ((this.vrts.length / 3) / 2);
+                    let temp3 = temp2+1;
+                    this.indices.push((k * slc) + i, (k * slc) + temp, (k * slc) + temp2);
+                    this.numToDraw += 3;
+
+                    this.indices.push((k * slc) + temp, (k * slc) + temp2, (k * slc) + temp3);
+                    this.numToDraw += 3;
+
+                }
+
             }
-
-            if (i == ((this.vrts.length / 3) / 2) -1)
-            {
-                let temp = 0;
-                let temp2 = i + ((this.vrts.length / 3) / 2);
-                let temp3 = ((this.vrts.length / 3) / 2 );
-                this.indices.push(i, temp, temp2);
-                this.numToDraw += 3;
-
-                this.indices.push(temp, temp2, temp3);
-                this.numToDraw += 3;
-            }
-            else
-            {
-                let temp = i+1;
-                let temp2 = i + ((this.vrts.length / 3) / 2);
-                let temp3 = temp2+1;
-                this.indices.push(i, temp, temp2);
-                this.numToDraw += 3;
-
-                this.indices.push(temp, temp2, temp3);
-                this.numToDraw += 3;
-
-            }
-
         }
 
-        let slc = (this.vrts.length / 3) / 2;
         //Create all line segments
         for (let k = 0; k < stacks; k++)
         {
