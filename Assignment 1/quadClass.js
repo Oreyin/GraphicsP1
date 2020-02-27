@@ -4,6 +4,13 @@ class Disk
     // TODO: Still needs to implement stacks
     constructor(slices = 0, stacks = 0, innerCenter = 0, outerCenter = 0, innerRadius, outerRadius, theta)
     {
+        this.slices = slices;
+        this.stacks = stacks;
+        this.theta = theta;
+        this.innerRadius = innerRadius;
+        this.outerRadius = outerRadius;
+        this.innerCenter = innerCenter;
+        this.outerCenter = outerCenter;
         this.numToDraw = 0;
         this.numAxes = 0;
         this.vao = gl.createVertexArray();  //creates the VAO vertex array Object Basically an umbrella term that we can turn on and off
@@ -24,125 +31,12 @@ class Disk
 
         //Create all the vertices
         this.vrts = [ ];
-        let p = vec3.create();
 
-        let distPerStack = (outerRadius - innerRadius) / stacks;
-
-        //inner ring
-        this.colors =  [ ];
-        this.indices = [ ];
-        for (let n = 0; n < stacks; n++)
-        {
-            let m = mat4.create();
-            mat4.translate(m,m, innerCenter);
-            for (let i = 0; i < this.numVrts; i++) {
-                mat4.rotate(m, m, Radians(this.numDeg), z_axis);
-                vec3.transformMat4(p, vec3.fromValues(innerRadius + (n * distPerStack), 0, 0), m);
-                this.vrts.push(p[0], p[1], p[2]);
-                for (let j = 0; j < 3; j++)
-                    this.colors.push(Math.random());
-            }
-        }
-
-        //outer ring
-        let m = mat4.create();
-        mat4.translate(m,m, outerCenter);
-        for (let i = 0; i < this.numVrts; i++) {
-            mat4.rotate(m, m, Radians(this.numDeg), z_axis);
-            vec3.transformMat4(p, vec3.fromValues(outerRadius, 0, 0), m);
-            this.vrts.push(p[0], p[1], p[2]);
-            for (let j = 0; j < 3; j++)
-                this.colors.push(Math.random());
-        }
-        //mat4.translate(m,m, -outerCenter);
-
-        let slc = slices;
-
-        for (let k = 0; k < stacks; k++)
-        {
-            //Creates all triangles
-            for (let i = 0; i < slices; i++)
-            {
-
-                if (i >= (slices * (theta / 360)))
-                {
-                    break;
-                }
-
-                if (i == (slices -1))
-                {
-                    let temp = 0;
-                    let temp2 = i + slices;
-                    let temp3 = slices;
-                    this.indices.push((k * slices) + i, (k * slices) + temp, (k * slices) + temp2);
-                    this.numToDraw += 3;
-
-                    this.indices.push((k * slc) + temp, (k * slc) + temp2, (k * slc) + temp3);
-                    this.numToDraw += 3;
-                }
-                else
-                {
-                    let temp = i+1;
-                    let temp2 = i + ((this.vrts.length / 3) / 2);
-                    let temp3 = temp2+1;
-                    this.indices.push((k * slc) + i, (k * slc) + temp, (k * slc) + temp2);
-                    this.numToDraw += 3;
-
-                    this.indices.push((k * slc) + temp, (k * slc) + temp2, (k * slc) + temp3);
-                    this.numToDraw += 3;
-
-                }
-
-            }
-        }
-
-        //Create all line segments
-        for (let k = 0; k < stacks; k++)
-        {
-            for (let i = 0; i < slices; i++)
-            {
-                if (i >= (slices * (theta / 360)))
-                {
-                    break;
-                }
-
-                if (i == slices -1)
-                {
-                    let temp = i-(slices-1);
-                    let temp2 = i + slices;
-                    let temp3 = i+1;
-                    this.axindices.push((k * slc) + i, (k * slc) + temp);
-                    this.axindices.push((k * slc) + temp, (k * slc) + temp2);
-                    this.axindices.push((k * slc) + temp2, (k * slc) + i);
-
-                    this.numAxes += 6;
-
-                    this.axindices.push((k * slc) + temp3, (k * slc) + temp2);
-                    //this.axindices.push((k * slc) + temp, (k * slc) + temp3);
-                    this.numAxes += 2;
-                }
-                else
-                {
-                    let temp = i+1;
-                    let temp2 = i + slices;
-                    let temp3 = temp2+1;
-                    this.axindices.push((k * slc) + i, (k * slc) + temp);
-                    this.axindices.push((k * slc) + temp, (k * slc) + temp2);
-                    this.axindices.push((k * slc) + temp2, (k * slc) + i);
-                    this.numAxes += 6;
-
-                    this.axindices.push((k * slc) + temp2, (k * slc) + temp3);
-                    this.axindices.push((k * slc) + temp, (k * slc) + temp3);
-
-                    this.numAxes += 4;
-
-                }
-
-            }
-        }
-
-        for (let i = 0; i < this.axindices.length * 1.5; i++)
-            this.axcolors.push(255);
+        this.CreateVertices();
+        this.ReloadTriangles();
+        this.ReloadLineSegs();
+        //this.numToDraw = this.indices.length;
+        //this.numAxes = this.axindices.length;
         
         console.log(this.vrts.length);
         console.log(this.numToDraw);
@@ -151,8 +45,6 @@ class Disk
         console.log(this.vrts.length);
         console.log(this.numAxes);
         console.log(this.vrts);
-
-        //console.log("Tsgseojhgosiknflakfnqepowifn00");
 
         //cols  1,0,0,  0,1,0
         //1,2,8,  2,3,8, inds
@@ -210,31 +102,127 @@ class Disk
         console.log('VAO: ' + this.vao);
     }
 
-    RecalculateOutline(triangle)
+    CreateVertices()
     {
-        if (triangle.vrts.length % 9 != 0)
-            throw('vrts length is not a multiple of 9')
+        let distPerStack = (this.outerRadius - this.innerRadius) / this.stacks;
 
-        let numTriangles = triangle.vrts.length / 9;
-        let numSegs = numTriangles * 3;
-        for (let i = 0; i < numTriangles; i++)
+        let p = vec3.create();
+        //inner ring
+        this.vrts = [];
+        this.colors =  [ ];
+        this.indices = [ ];
+        for (let n = 0; n < this.stacks+1; n++)
         {
-            let v0_offset = i * 3;
+            let m = mat4.create();
+            mat4.translate(m,m, this.innerCenter);
+            for (let i = 0; i < this.numVrts; i++) {
+                mat4.rotate(m, m, Radians(this.numDeg), z_axis);
+                vec3.transformMat4(p, vec3.fromValues(this.innerRadius + (n * distPerStack), 0, 0), m);
+                this.vrts.push(p[0], p[1], p[2]);
+                for (let j = 0; j < 3; j++)
+                    this.colors.push(Math.random());
+            }
+        }
+    }
 
-            for (let j = 0; j < 3; j++)
+    ReloadTriangles()
+    {
+        this.indices = [];
+        this.numToDraw = 0;
+        let slc = this.slices;
+
+        for (let k = 0; k < this.stacks; k++)
+        {
+            //Creates all triangles
+            for (let i = 0; i < this.slices; i++)
             {
-                let innerOffset = j * 3;
-                triangle.lsv.push(triangle.vrts[v0_offset + innerOffset]);
-                triangle.lsv.push(triangle.vrts[v0_offset + innerOffset + 1]);
-                triangle.lsv.push(triangle.vrts[v0_offset + innerOffset + 2]);
 
-                innerOffset = (innerOffset + 3) % 9;
-                triangle.lsv.push(triangle.vrts[v0_offset + innerOffset]);
-                triangle.lsv.push(triangle.vrts[v0_offset + innerOffset + 1]);
-                triangle.lsv.push(triangle.vrts[v0_offset + innerOffset + 2]);
+                if (i >= (this.slices * (this.theta / 360)))
+                {
+                    break;
+                }
+
+                if (i == (this.slices -1))
+                {
+                    let temp = i-(this.slices-1);
+                    let temp2 = i + this.slices;
+                    let temp3 = i+1;
+                    this.indices.push((k * this.slices) + i, (k * this.slices) + temp, (k * this.slices) + temp2);
+                    this.numToDraw += 3;
+
+                    this.indices.push((k * slc) + temp, (k * slc) + temp2, (k * slc) + temp3);
+                    this.numToDraw += 3;
+                }
+                else
+                {
+                    let temp = i+1;
+                    let temp2 = i + this.slices;
+                    let temp3 = temp2+1;
+                    this.indices.push((k * slc) + i, (k * slc) + temp, (k * slc) + temp2);
+                    this.numToDraw += 3;
+
+                    this.indices.push((k * slc) + temp, (k * slc) + temp2, (k * slc) + temp3);
+                    this.numToDraw += 3;
+
+                }
+
+            }
+        }
+    }
+
+    ReloadLineSegs()
+    {
+        this.axcolors = [];
+        this.axindices = [];
+        this.numAxes = 0;
+
+        let slc = this.slices;
+        //Create all line segments
+        for (let k = 0; k < this.stacks; k++)
+        {
+            for (let i = 0; i < this.slices; i++)
+            {
+                if (i >= (this.slices * (this.theta / 360)))
+                {
+                    break;
+                }
+
+                if (i == this.slices -1)
+                {
+                    let temp = i-(this.slices-1);
+                    let temp2 = i + this.slices;
+                    let temp3 = i+1;
+                    this.axindices.push((k * slc) + i, (k * slc) + temp);
+                    this.axindices.push((k * slc) + temp, (k * slc) + temp2);
+                    this.axindices.push((k * slc) + temp2, (k * slc) + i);
+
+                    this.numAxes += 6;
+
+                    this.axindices.push((k * slc) + temp3, (k * slc) + temp2);
+                    this.numAxes += 2;
+                }
+                else
+                {
+                    let temp = i+1;
+                    let temp2 = i + this.slices;
+                    let temp3 = temp2+1;
+                    this.axindices.push((k * slc) + i, (k * slc) + temp);
+                    this.axindices.push((k * slc) + temp, (k * slc) + temp2);
+                    this.axindices.push((k * slc) + temp2, (k * slc) + i);
+                    this.numAxes += 6;
+
+                    this.axindices.push((k * slc) + temp2, (k * slc) + temp3);
+                    this.axindices.push((k * slc) + temp, (k * slc) + temp3);
+
+                    this.numAxes += 4;
+
+                }
+
             }
         }
 
+        for (let i = 0; i < this.axindices.length * 1.5; i++)
+            this.axcolors.push(255);
     }
 
 }
