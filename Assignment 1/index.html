@@ -54,36 +54,32 @@
 				let P = mat4.create();
 				let V = mat4.create();
 
-				gl.useProgram(color_shader.program);
+				gl.useProgram(solid_shader.program);
 				mat4.perspective(P, Radians(35.0), glcanvas.clientWidth / glcanvas.clientHeight, near_plane, far_plane);
 				mat4.lookAt(V, vec3.fromValues(5, 5, 10), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
 
 				let M = mat4.create();
 				let x = 2 * Math.cos(now / 2);
 				let y = 2 * Math.sin(now / 2)
-				//mat4.translate(M, M, vec3.fromValues(x*1.2, y*1.2, 0));	
+	
 				// TODO: fix rotation to be 15 rpm	
-				mat4.rotate(M, M, Radians(now * 6)*15*3, y_axis);
+				mat4.rotate(M, M, Radians(now * 6*15*Math.PI), y_axis);
+
+				gl.uniformMatrix4fv(solid_shader.u_m, false, M);
+				gl.uniformMatrix4fv(solid_shader.u_v, false, V);
+				gl.uniformMatrix4fv(solid_shader.u_pj, false, P);
+				gl.uniform4fv(solid_shader.u_color, vec4.fromValues(1.0, 1.0, 1.0, 1.0));
 
 				if (wireframe)
 				{
-					gl.useProgram(solid_shader.program);
-					gl.uniformMatrix4fv(solid_shader.u_m, false, M);
-					gl.uniformMatrix4fv(solid_shader.u_v, false, V);
-					gl.uniformMatrix4fv(solid_shader.u_pj, false, P);
-					gl.uniform4fv(solid_shader.u_color, vec4.fromValues(1.0, 1.0, 1.0, 1.0));
 
 					gl.bindVertexArray(quad.axvao);
 					gl.drawElements(gl.LINES, quad.numAxes, gl.UNSIGNED_SHORT, 0);
 				}
 
-				gl.useProgram(color_shader.program);
-				gl.uniformMatrix4fv(color_shader.u_m, false, M);
-				gl.uniformMatrix4fv(color_shader.u_v, false, V);
-				gl.uniformMatrix4fv(color_shader.u_pj, false, P);
-				
 				if (shapeToggle)
 				{
+					gl.uniform4fv(solid_shader.u_color, vec4.fromValues(.7, .4, .5, 1.0));
 					//console.log(quad);
 					gl.bindVertexArray(quad.vao);
 					gl.drawElements(gl.TRIANGLES, quad.numToDraw, gl.UNSIGNED_SHORT, 0);
@@ -148,10 +144,12 @@
 					//console.log(quad);
 					stacks++;
 					stacks = stacks % 40;
-					//TODO: make stacks update instantly
+					stacks += stacks == 0 ? 1 : 0;
+					
+					quad.stacks = stacks;
 					quad.CreateVertices();
-					quad.ReloadTriangles(stacks);
-        			quad.ReloadLineSegs(stacks);
+					quad.ReloadTriangles();
+        			quad.ReloadLineSegs();
 				}
 			});
 
