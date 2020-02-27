@@ -46,35 +46,6 @@ class Disk
         console.log(this.numAxes);
         console.log(this.vrts);
 
-        //cols  1,0,0,  0,1,0
-        //1,2,8,  2,3,8, inds
-        // 0, 3, 4,  0,1,5,  1,2,6,  2,3,7,
-        gl.bindVertexArray(this.vao);  //binds the Umbrella  which enables the buffer on the GPU
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.vrts_buffer);  //bind the vrts buffer and using the array buffer to pass a bunch of numbers
-
-        //says att 1 is going to have type float with 3 dimensions, 
-        gl.vertexAttribPointer(color_shader.a_vertex_coordinates, 3, gl.FLOAT, false, 0, 0);  // color_shader is the #1 loaded on 110
-        
-        //turns on att 1
-        gl.enableVertexAttribArray(color_shader.a_vertex_coordinates);
-        
-        //stuffs the data from CPU -> GPU
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vrts), gl.STATIC_DRAW);
-
-        //binding the color buffer with att 0
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.colr_buffer);
-
-        gl.vertexAttribPointer(color_shader.a_colors, 3, gl.FLOAT, false, 0, 0);
-
-        //Static Draw says GPU organize the memory in a way that data won't be overridden
-        //dynamic Draw would say organize the Mem so we can frequently update
-        gl.enableVertexAttribArray(color_shader.a_colors);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.colors), gl.STATIC_DRAW);
-
-        //this is the indices 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indx_buffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.STATIC_DRAW);
-
         //Bind the axes
         gl.bindVertexArray(this.axvao);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.axvrts_buffer);
@@ -104,7 +75,13 @@ class Disk
 
     CreateVertices()
     {
+        
         let distPerStack = (this.outerRadius - this.innerRadius) / this.stacks;
+
+        //gets the y and z values from the center vectors and calculates the increment for each stack
+        let stacky = (this.outerCenter[1] - this.innerCenter[1]) / this.stacks;
+        let stackz = (this.outerCenter[2] - this.innerCenter[2]) / this.stacks;
+        //console.log(stackcenters);
 
         let p = vec3.create();
         //inner ring
@@ -117,7 +94,7 @@ class Disk
             mat4.translate(m,m, this.innerCenter);
             for (let i = 0; i < this.numVrts; i++) {
                 mat4.rotate(m, m, Radians(this.numDeg), z_axis);
-                vec3.transformMat4(p, vec3.fromValues(this.innerRadius + (n * distPerStack), 0, 0), m);
+                vec3.transformMat4(p, vec3.fromValues(this.innerRadius + (n * distPerStack), (n*stacky), (n*stackz)), m);
                 this.vrts.push(p[0], p[1], p[2]);
                 for (let j = 0; j < 3; j++)
                     this.colors.push(Math.random());
@@ -168,6 +145,39 @@ class Disk
 
             }
         }
+
+        gl.bindVertexArray(this.vao);  //binds the Umbrella  which enables the buffer on the GPU
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vrts_buffer);  //bind the vrts buffer and using the array buffer to pass a bunch of numbers
+
+        //says att 1 is going to have type float with 3 dimensions, 
+        gl.vertexAttribPointer(color_shader.a_vertex_coordinates, 3, gl.FLOAT, false, 0, 0);  // color_shader is the #1 loaded on 110
+        
+        //turns on att 1
+        gl.enableVertexAttribArray(color_shader.a_vertex_coordinates);
+        
+        //stuffs the data from CPU -> GPU
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vrts), gl.STATIC_DRAW);
+
+        //binding the color buffer with att 0
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.colr_buffer);
+
+        gl.vertexAttribPointer(color_shader.a_colors, 3, gl.FLOAT, false, 0, 0);
+
+        //Static Draw says GPU organize the memory in a way that data won't be overridden
+        //dynamic Draw would say organize the Mem so we can frequently update
+        gl.enableVertexAttribArray(color_shader.a_colors);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.colors), gl.STATIC_DRAW);
+
+        //this is the indices 
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indx_buffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.indices), gl.STATIC_DRAW);
+
+        /*	This unbinding of the VAO is necessary.
+        */
+
+       gl.bindVertexArray(null); // null unbinds something
+       gl.bindBuffer(gl.ARRAY_BUFFER, null); 
+       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     }
 
     ReloadLineSegs()
@@ -223,6 +233,28 @@ class Disk
 
         for (let i = 0; i < this.axindices.length * 1.5; i++)
             this.axcolors.push(255);
+
+        //Bind the axes
+        gl.bindVertexArray(this.axvao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.axvrts_buffer);
+        gl.vertexAttribPointer(color_shader.a_vertex_coordinates, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(color_shader.a_vertex_coordinates);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vrts), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.axcolr_buffer);
+        gl.vertexAttribPointer(color_shader.a_colors, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(color_shader.a_colors);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.axcolors), gl.STATIC_DRAW);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.axindx_buffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(this.axindices), gl.STATIC_DRAW);
+
+        /*	This unbinding of the VAO is necessary.
+        */
+
+        gl.bindVertexArray(null); // null unbinds something
+        gl.bindBuffer(gl.ARRAY_BUFFER, null); 
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
     }
 
 }
