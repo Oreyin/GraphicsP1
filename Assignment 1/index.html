@@ -55,9 +55,6 @@
 				let P = mat4.create();
 				let V = mat4.create();
 
-				//Loads the solid shader program
-				gl.useProgram(solid_shader.program);
-
 				mat4.perspective(P, Radians(35.0), glcanvas.clientWidth / glcanvas.clientHeight, near_plane, far_plane);
 				mat4.lookAt(V, vec3.fromValues(5, 5, 10), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
 
@@ -65,35 +62,10 @@
 				let x = 2 * Math.cos(now / 2);
 				let y = 2 * Math.sin(now / 2)
 	
-				// TODO: fix rotation to be 15 rpm	
-				mat4.rotate(M, M, Radians(now * (Math.PI / 2)), y_axis);
+				// 2*Pi * 15 / 60 = 2 / pi = 90
+				mat4.rotate(M, M, Radians(now * 90), y_axis);
 
-				//Initializes the M, V, and P matrices in solid shader
-				gl.uniformMatrix4fv(solid_shader.u_m, false, M);
-				gl.uniformMatrix4fv(solid_shader.u_v, false, V);
-				gl.uniformMatrix4fv(solid_shader.u_pj, false, P);
-
-				//if wireframe is enabled
-				if (wireframe)
-				{
-					//Sets the solid shader colour
-					gl.uniform4fv(solid_shader.u_color, vec4.fromValues(1.0, 1.0, 1.0, 1.0));
-
-					//Binds the line seg vao and draws it
-					gl.bindVertexArray(quad.axvao);
-					gl.drawElements(gl.LINES, quad.numAxes, gl.UNSIGNED_SHORT, 0);
-				}
-
-				//if the triangles are enabled
-				if (shapeToggle)
-				{
-					//Sets the solid shader colour
-					gl.uniform4fv(solid_shader.u_color, vec4.fromValues(.7, .4, .5, 1.0));
-					
-					//Binds the triangles vao and draws it
-					gl.bindVertexArray(quad.vao);
-					gl.drawElements(gl.TRIANGLES, quad.numToDraw, gl.UNSIGNED_SHORT, 0);
-				}
+				quad.Draw(M,V,P);
 
 				//UnBinds everything and calls draw again
 				gl.bindVertexArray(null);
@@ -116,16 +88,13 @@
 			var txcanvas = document.getElementById("txcanvas");
 			var gl = glcanvas.getContext('webgl2');
 			var ct = txcanvas.getContext("2d");
-			var color_shader = {};
-			var solid_shader = {};
-			var quad = {};
-			var axes = {};
+			var solid_shader = {}; // the solid shader object
+			var quad = {}; // this is our disk object
 
-			var lineNumToDraw = 0;
-			var wireframe = true;
-			var shapeToggle = false;
-			var shape = 0;
-			var stacks = 1;
+			var wireframe = true; // whether or not to draw the wireframe
+			var shapeToggle = false; // whether or not to draw the triangles
+			var shape = 0; // tells us which shape to draw
+			var stacks = 1; // how many stacks in the shapes
 
 			ct.textAlign = "left";
 			ct.textBaseline = "bottom";
@@ -134,27 +103,32 @@
 			ct.fillStyle = "#C0C0C0";
 			ct.fillText("W to toggle wireframe - D to toggle triangles - M to cycle shapes - S to add stacks", 20, 50);
 
+			//If w is pressed toggle the wireframe
 			document.addEventListener('keydown', function(event) {
 				if(event.key == 'w') {
-					console.log(quad);
+					//console.log(quad);
 					wireframe = !wireframe;
 				}
 			});
 
+			//if d is pressed toggle the triangles
 			document.addEventListener('keydown', function(event) {
 				if(event.key == 'd') {
-					console.log(quad);
+					//console.log(quad);
 					shapeToggle = !shapeToggle;
 				}
 			});
 
+			//if s is pressed increment stack
 			document.addEventListener('keydown', function(event) {
 				if(event.key == 's') {
-					//console.log(quad);
+					//Increment stack and mod it by 40 to keep it in a reasonable range
 					stacks++;
 					stacks = stacks % 40;
+					//make sure stack is never 0
 					stacks += stacks == 0 ? 1 : 0;
 					
+					//update and redraw the Disk with the updated stack value
 					quad.stacks = stacks;
 					quad.CreateVertices();
 					quad.ReloadTriangles();
@@ -162,9 +136,11 @@
 				}
 			});
 
+			//switches which shape we are drawing when the m key is pressed
 			document.addEventListener('keydown', function(event) {
 				if(event.key == 'm') {
 					//console.log(quad);
+					//increment shape by 1 and mod it to keep a repeating cycle of 4 shapes
 					shape = (shape + 1) % 4
 
 					switch (shape)
@@ -176,7 +152,7 @@
 
 						//partial disk
 						case 1:
-						quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,0), .3, .75, 360);
+						quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,0), .4, .8, 360);
 						break;
 
 						//cylinder
@@ -186,7 +162,7 @@
 
 						//partial cone
 						case 3:
-						quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,1), .75, .25, 230);
+						quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,1), .75, .25, 270);
 						break;
 
 					}
@@ -194,10 +170,10 @@
 				}
 			});
 
-			InitializeIndexedColorShader();
+			//Initialize the solid colour shader
 			InitializeSolidColorShader();
+			//start off with quad == a new disk, same shape as case 0:
 			quad = new Disk(36, stacks, vec3.fromValues(0,0,0), vec3.fromValues(0,0,0), .03, .75, 360);
-			//InitializeAxes();
 			requestAnimationFrame(DrawScene)
 		</script>
 	</body>
