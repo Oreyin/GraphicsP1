@@ -149,7 +149,7 @@
 				let y = 2 * Math.sin(now / 2)
 				//mat4.translate(M, M, vec3.fromValues(x*1.2, y*1.2, 0));	
 				// TODO: fix rotation to be 15 rpm	
-				mat4.rotate(M, M, Radians(now * 6*15), y_axis);
+				mat4.rotate(M, M, Radians(now * 6)*15*3, y_axis);
 
 				gl.uniformMatrix4fv(color_shader.u_m, false, M);
 				gl.uniformMatrix4fv(color_shader.u_v, false, V);
